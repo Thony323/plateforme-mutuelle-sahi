@@ -1,0 +1,78 @@
+{
+    "1. Contrats (dim_contrat)": {
+        "nb_lignes": 5788,
+        "nb_colonnes": 27,
+        "doublons_stricts": 0,
+        "doublons_cle_primaire": 0,
+        "colonnes_valeurs_manquantes": {
+            "Téléphone": 760,
+            "Montant total remboursé sur ce contrat": 5255,
+            "Date du dernier remboursement": 5255
+        }
+    },
+    "2. Membres (dim_membre)": {
+        "nb_lignes": 16875,
+        "nb_colonnes": 21,
+        "doublons_stricts": 0,
+        "doublons_cle_primaire": 7597,
+        "colonnes_valeurs_manquantes": {
+            "Code annexe": 11087,
+            "Type de membre": 14,
+            "Date du dernier remboursement pour cette personne": 16238
+        }
+    },
+    "3. Contrat-Membre (dim_contrat_membre)": {
+        "nb_lignes": 9909,
+        "nb_colonnes": 10,
+        "doublons_stricts": 0,
+        "doublons_cle_primaire": 0,
+        "colonnes_valeurs_manquantes": {}
+    },
+    "4. Cotisations (fact_cotisation)": {
+        "nb_lignes": 46495,
+        "nb_colonnes": 13,
+        "doublons_stricts": 7,
+        "doublons_cle_primaire": 0,
+        "colonnes_valeurs_manquantes": {}
+    },
+    "5. Recettes (fact_recette)": {
+        "nb_lignes": 6103,
+        "nb_colonnes": 17,
+        "doublons_stricts": 0,
+        "doublons_cle_primaire": 0,
+        "colonnes_valeurs_manquantes": {
+            "Part Frais de fct": 801,
+            "Date de saisie": 801,
+            "code Reçu": 801,
+            "Numéro de pièce comptable": 6103,
+            "Saisit par": 801
+        }
+    },
+    "6. Sinistres (fact_sinistre)": {
+        "nb_lignes": 767,
+        "nb_colonnes": 28,
+        "doublons_stricts": 0,
+        "doublons_cle_primaire": 0,
+        "colonnes_valeurs_manquantes": {
+            "reasonCharge": 539,
+            "Catégorie prestataire de santé": 59,
+            "Prestataire de santé": 59,
+            "Public/Privé": 59,
+            "Saisit par": 767
+        }
+    },
+    "7. Reçus Sinistres (fact_recu_sinistre)": {
+        "nb_lignes": 1525,
+        "nb_colonnes": 33,
+        "doublons_stricts": 0,
+        "doublons_cle_primaire": 0,
+        "colonnes_valeurs_manquantes": {
+            "Numéro de pièce comptable": 12,
+            "Catégorie prestataire de santé": 89,
+            "Prestataire de santé": 89,
+            "Public/Privé": 89,
+            "reasonCharge": 4,
+            "Saisit par": 794
+        }
+    }
+}
