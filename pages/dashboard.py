@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import ssl
 
 # Résolution du chemin racine du projet
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -8,7 +9,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from sqlalchemy import text
+from sqlalchemy import text, create_engine
 from database.connection import get_engine
 
 # ---------------------------------------------------------
@@ -126,7 +127,7 @@ st.markdown(f"""
     .kpi-blue::before {{ background: {COLOR_PRIMARY_BLUE}; }}
     .kpi-green::before {{ background: {COLOR_SECONDARY_GREEN}; }}
     .kpi-orange::before {{ background: #F59E0B; }}
-    .kpi-purple::before {{ background: {COLOR_6366F1 if '6366F1' in globals() else '#6366F1'}; }}
+    .kpi-purple::before {{ background: #6366F1; }}
     .kpi-red::before {{ background: #EF4444; }}
 
     .kpi-header {{
@@ -191,7 +192,20 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-engine = get_engine()
+# ---------------------------------------------------------
+# Initialisation sécurisée de la connexion (Neon / Secrets)
+# ---------------------------------------------------------
+@st.cache_resource
+def init_connection():
+    try:
+        db_url = st.secrets["postgres"]["url"]
+        ssl_context = ssl.create_default_context()
+        return create_engine(db_url, connect_args={"ssl_context": ssl_context})
+    except Exception:
+        # Fallback local si st.secrets n'est pas défini
+        return get_engine()
+
+engine = init_connection()
 
 # ---------------------------------------------------------
 # Sidebar : Style Institutionnel
