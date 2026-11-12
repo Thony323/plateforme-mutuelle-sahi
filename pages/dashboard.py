@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-import ssl
 
 # Résolution du chemin racine du projet
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -9,8 +8,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from sqlalchemy import text, create_engine
-from database.connection import get_engine
 
 # ---------------------------------------------------------
 # Configuration de la page Streamlit
@@ -21,6 +18,15 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# ---------------------------------------------------------
+# Connexion native à la base de données (Neon / Streamlit)
+# ---------------------------------------------------------
+@st.cache_resource
+def get_db_connection():
+    return st.connection("sql", type="sql")
+
+conn = get_db_connection()
 
 # ---------------------------------------------------------
 # Couleurs officielles SAHI & Thème UI Exécutif
@@ -193,21 +199,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Initialisation sécurisée de la connexion (Neon / Secrets)
-# ---------------------------------------------------------
-@st.cache_resource
-def init_connection():
-    try:
-        db_url = st.secrets["postgres"]["url"]
-        ssl_context = ssl.create_default_context()
-        return create_engine(db_url, connect_args={"ssl_context": ssl_context})
-    except Exception:
-        # Fallback local si st.secrets n'est pas défini
-        return get_engine()
-
-engine = init_connection()
-
-# ---------------------------------------------------------
 # Sidebar : Style Institutionnel
 # ---------------------------------------------------------
 with st.sidebar:
@@ -240,9 +231,8 @@ st.markdown("""
 @st.cache_data(ttl=600)
 def load_zones():
     try:
-        with engine.connect() as conn:
-            df = pd.read_sql(text("SELECT DISTINCT zone FROM dim_contrat WHERE zone IS NOT NULL AND zone != '' ORDER BY zone;"), conn)
-            return df['zone'].tolist()
+        df = conn.query("SELECT DISTINCT zone FROM dim_contrat WHERE zone IS NOT NULL AND zone != '' ORDER BY zone;", ttl=600)
+        return df['zone'].tolist()
     except Exception as e:
         st.error(f"Erreur lors du chargement des agences : {e}")
         return []
@@ -287,23 +277,26 @@ else:
 # ---------------------------------------------------------
 nb_membres, tot_cotis, tot_rembourse, nb_sinistres = 0, 0.0, 0.0, 0
 
-with engine.connect() as conn:
-    try:
-        query_membres = f"SELECT COUNT(DISTINCT m.code_membre) FROM dim_membre m JOIN dim_contrat c ON m.contrat = c.contrat {where_zone_c};" if not all_zones_selected else "SELECT COUNT(DISTINCT code_membre) FROM dim_membre;"
-        nb_membres = conn.execute(text(query_membres)).scalar() or 0
-    except Exception: pass
+try:
+    query_membres = f"SELECT COUNT(DISTINCT m.code_membre) FROM dim_membre m JOIN dim_contrat c ON m.contrat = c.contrat {where_zone_c};" if not all_zones_selected else "SELECT COUNT(DISTINCT code_membre) FROM dim_membre;"
+    res = conn.query(query_membres, ttl=600)
+    nb_membres = int(res.iloc[0, 0]) if not res.empty else 0
+except Exception: pass
 
-    try:
-        tot_cotis = float(conn.execute(text(f"SELECT COALESCE(SUM(cot.montant_cotisation_payee), 0) FROM fact_cotisation cot {where_zone_cot};")).scalar() or 0.0)
-    except Exception: pass
+try:
+    res = conn.query(f"SELECT COALESCE(SUM(cot.montant_cotisation_payee), 0) FROM fact_cotisation cot {where_zone_cot};", ttl=600)
+    tot_cotis = float(res.iloc[0, 0]) if not res.empty else 0.0
+except Exception: pass
 
-    try:
-        tot_rembourse = float(conn.execute(text(f"SELECT COALESCE(SUM(s.montant_rembourse), 0) FROM fact_sinistre s {where_zone_s};")).scalar() or 0.0)
-    except Exception: pass
+try:
+    res = conn.query(f"SELECT COALESCE(SUM(s.montant_rembourse), 0) FROM fact_sinistre s {where_zone_s};", ttl=600)
+    tot_rembourse = float(res.iloc[0, 0]) if not res.empty else 0.0
+except Exception: pass
 
-    try:
-        nb_sinistres = conn.execute(text(f"SELECT COUNT(DISTINCT s.sinistre) FROM fact_sinistre s {where_zone_s};")).scalar() or 0
-    except Exception: pass
+try:
+    res = conn.query(f"SELECT COUNT(DISTINCT s.sinistre) FROM fact_sinistre s {where_zone_s};", ttl=600)
+    nb_sinistres = int(res.iloc[0, 0]) if not res.empty else 0
+except Exception: pass
 
 # Calcul du ratio Sinistres / Cotisations (S/P)
 ratio_sp = (tot_rembourse / tot_cotis * 100) if tot_cotis > 0 else 0.0
@@ -404,7 +397,7 @@ with c_evo1:
         WHERE COALESCE(c.mois, s.mois) IS NOT NULL AND COALESCE(c.mois, s.mois) != '' ORDER BY mois;
     """
     try:
-        df_evo_fin = pd.read_sql(text(query_evo_fin), engine)
+        df_evo_fin = conn.query(query_evo_fin, ttl=600)
         if not df_evo_fin.empty:
             fig_fin = go.Figure()
             fig_fin.add_trace(go.Scatter(
@@ -433,7 +426,7 @@ with c_evo2:
         FROM fact_sinistre s {where_zone_s} GROUP BY TO_CHAR(CAST(s.date_d_admission AS DATE), 'YYYY-MM') ORDER BY mois;
     """
     try:
-        df_evo_sin = pd.read_sql(text(query_evo_sin), engine)
+        df_evo_sin = conn.query(query_evo_sin, ttl=600)
         if not df_evo_sin.empty:
             fig_sin = px.bar(
                 df_evo_sin, x='mois', y='nb_sinistres',
@@ -468,7 +461,7 @@ with c_rep1:
         FROM fact_sinistre s {where_zone_s} GROUP BY s.groupe_de_pathologie ORDER BY total_rembourse DESC LIMIT 7;
     """
     try:
-        df_patho = pd.read_sql(text(query_patho), engine)
+        df_patho = conn.query(query_patho, ttl=600)
         if not df_patho.empty:
             palette = [COLOR_PRIMARY_BLUE, COLOR_SECONDARY_GREEN, '#38BDF8', '#818CF8', '#F59E0B', '#10B981', '#64748B']
             fig_pie = px.pie(
@@ -491,7 +484,7 @@ with c_rep2:
         FROM fact_cotisation cot {where_zone_cot} GROUP BY cot.zone ORDER BY total_cotisation DESC;
     """
     try:
-        df_zone = pd.read_sql(text(query_zone), engine)
+        df_zone = conn.query(query_zone, ttl=600)
         if not df_zone.empty:
             fig_zone = px.bar(
                 df_zone, x='total_cotisation', y='zone', orientation='h', text_auto='.2s',
