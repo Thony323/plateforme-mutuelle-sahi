@@ -20,11 +20,13 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# Connexion native à la base de données (Neon / Streamlit)
+# Connexion native à la base de données Neon (Corrigée)
 # ---------------------------------------------------------
 @st.cache_resource
 def get_db_connection():
-    return st.connection("sql", type="sql")
+    # URL de connexion Neon explicite pour s'assurer que Streamlit cible la bonne base
+    DATABASE_URL = "postgresql://neondb_owner:npg_qinVJeSZmW45@ep-super-poetry-bahmteh8-pooler.c-8.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+    return st.connection("sql", type="sql", url=DATABASE_URL)
 
 conn = get_db_connection()
 
