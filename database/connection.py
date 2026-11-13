@@ -1,22 +1,16 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
-
-DB_HOST = "localhost"
-DB_PORT = 5432
-DB_NAME = "mutuelle_sahi"
-DB_USER = "postgres"
-DB_PASS = "0323"  # Votre mot de passe en chaîne de caractères
 
 def get_engine():
-    # Construction sécurisée de l'URL avec le driver pg8000 (100% Python)
-    connection_url = URL.create(
-        drivername="postgresql+pg8000",
-        username=DB_USER,
-        password=str(DB_PASS),
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME
-    )
+    # Récupère l'URL de Neon (sur Streamlit Cloud) ou utilise le fallback local
+    database_url = os.getenv("DATABASE_URL")
     
-    return create_engine(connection_url)
+    if not database_url:
+        # Configuration locale par défaut si DATABASE_URL n'est pas défini
+        database_url = "postgresql://postgres:0323@localhost:5432/mutuelle_sahi"
+    
+    # Correction automatique si l'URL commence par postgres:// (ancien format)
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+    return create_engine(database_url)
